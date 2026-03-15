@@ -19,14 +19,54 @@ describe("logging messages", () => {
   });
 
   it("returns default function messages", () => {
-    expect(
-      loggingMessages.bicepVersionInstalled("1.2.3", "/path/to/bicep"),
-    ).toBe("Installed Bicep version 1.2.3 to /path/to/bicep");
     expect(loggingMessages.requestFailedCorrelation("test-id")).toBe(
       "Request failed. CorrelationId: test-id",
     );
     expect(loggingMessages.requestFailedCorrelation(null)).toBe(
       "Request failed. CorrelationId: null",
+    );
+    expect(loggingMessages.bicepCacheHit("1.2.3", "/path/to/bicep")).toBe(
+      "Using cached Bicep version 1.2.3 from /path/to/bicep",
+    );
+    expect(loggingMessages.bicepDownloading("0.32.4")).toBe(
+      "Downloading Bicep version 0.32.4...",
+    );
+    expect(
+      loggingMessages.startingOperation(
+        "deployment",
+        "create",
+        "resourceGroup",
+        "my-rg",
+        "my-deployment",
+      ),
+    ).toBe(
+      "Starting deployment create at resourceGroup 'my-rg' scope with name 'my-deployment'",
+    );
+    expect(
+      loggingMessages.startingOperation(
+        "deploymentStack",
+        "validate",
+        "subscription",
+        "1234",
+        "",
+      ),
+    ).toBe("Starting deploymentStack validate at subscription '1234' scope");
+    expect(
+      loggingMessages.startingOperation(
+        "deployment",
+        "create",
+        "tenant",
+        "",
+        "my-deployment",
+      ),
+    ).toBe(
+      "Starting deployment create at tenant scope with name 'my-deployment'",
+    );
+    expect(loggingMessages.usingTemplateFile("./main.bicep")).toBe(
+      "Using template file: ./main.bicep",
+    );
+    expect(loggingMessages.usingParametersFile("./main.bicepparam")).toBe(
+      "Using parameters file: ./main.bicepparam",
     );
   });
 
@@ -42,13 +82,13 @@ describe("logging messages", () => {
 
   it("overrides function messages", () => {
     setLoggingMessages({
-      bicepVersionInstalled: (version: string, path: string) =>
-        `Bicep ${version} installed at ${path}`,
+      bicepCacheHit: (version: string, path: string) =>
+        `Bicep ${version} cached at ${path}`,
     });
 
-    expect(
-      loggingMessages.bicepVersionInstalled("2.0.0", "/usr/bin/bicep"),
-    ).toBe("Bicep 2.0.0 installed at /usr/bin/bicep");
+    expect(loggingMessages.bicepCacheHit("2.0.0", "/usr/bin/bicep")).toBe(
+      "Bicep 2.0.0 cached at /usr/bin/bicep",
+    );
   });
 
   it("resets to default messages", () => {
@@ -83,8 +123,8 @@ describe("logging messages", () => {
     });
 
     expect(loggingMessages.diagnosticsReturned).toBe("Custom diagnostics");
-    expect(loggingMessages.bicepVersionInstalled("1.0.0", "/path")).toBe(
-      "Installed Bicep version 1.0.0 to /path",
+    expect(loggingMessages.bicepCacheHit("1.0.0", "/path")).toBe(
+      "Using cached Bicep version 1.0.0 from /path",
     );
   });
 });

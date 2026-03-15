@@ -2,11 +2,7 @@
 // Licensed under the MIT License.
 import * as core from "@actions/core";
 
-import {
-  getTemplateAndParameters,
-  parseConfig,
-  execute,
-} from "@azure/bicep-deploy-common";
+import { parseConfig, execute } from "@azure/bicep-deploy-common";
 
 import {
   ActionInputReader,
@@ -15,6 +11,7 @@ import {
 } from "./actionIO";
 
 import { ActionLogger } from "./logging";
+import { ActionBicepCache } from "./bicepCache";
 
 /**
  * The main function for the action.
@@ -27,11 +24,10 @@ export async function run(): Promise<void> {
     const config = parseConfig(inputReader, inputParameterNames);
     const logger = new ActionLogger();
     const outputSetter = new ActionOutputSetter();
+    const bicepCache = new ActionBicepCache();
     logger.logInfo(`Action config: ${JSON.stringify(config, null, 2)}`);
 
-    const files = await getTemplateAndParameters(config, logger);
-
-    await execute(config, files, logger, outputSetter);
+    await execute(config, logger, outputSetter, bicepCache);
   } catch (error) {
     // Fail the workflow run if an error occurs
     const message = error instanceof Error ? error.message : `${error}`;

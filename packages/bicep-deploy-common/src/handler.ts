@@ -14,8 +14,9 @@ import {
   logDiagnostics,
   validateFileScope,
   tryWithErrorHandling,
+  getScopedId,
 } from "./utils";
-import { ParsedFiles } from "./file";
+import { getTemplateAndParameters, ParsedFiles, BicepCache } from "./file";
 import { Logger } from "./logging";
 import { OutputSetter, setOutputs } from "./output";
 import {
@@ -23,13 +24,17 @@ import {
   ErrorMessageConfig,
   setErrorMessages,
 } from "./errorMessages";
-import { LoggingMessageConfig, setLoggingMessages } from "./loggingMessages";
+import {
+  loggingMessages,
+  LoggingMessageConfig,
+  setLoggingMessages,
+} from "./loggingMessages";
 
 export async function execute(
   config: DeployConfig,
-  files: ParsedFiles,
   logger: Logger,
   outputSetter: OutputSetter,
+  bicepCache: BicepCache,
   customErrorMessages?: Partial<ErrorMessageConfig>,
   customLoggingMessages?: Partial<LoggingMessageConfig>,
 ) {
@@ -41,8 +46,30 @@ export async function execute(
     setLoggingMessages(customLoggingMessages);
   }
 
+  let files: ParsedFiles = {};
+
   try {
-    validateFileScope(config, files);
+    // Log what operation we're starting
+    const scopedId = getScopedId(config);
+    logger.logInfo(
+      loggingMessages.startingOperation(
+        config.type,
+        config.operation,
+        config.scope.type,
+        scopedId,
+        config.name ?? "",
+      ),
+    );
+
+    if (config.operation !== "delete") {
+      // Get template and parameters only for non-delete operations
+      files = await getTemplateAndParameters(config, logger, bicepCache);
+      validateFileScope(config, files);
+    } else if (config.parametersFile || config.templateFile) {
+      // Log a message if files are provided for a delete operation
+      logger.logWarning(loggingMessages.filesIgnoredForDelete);
+    }
+
     switch (config.type) {
       case "deployment": {
         switch (config.operation) {

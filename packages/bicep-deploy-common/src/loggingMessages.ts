@@ -3,16 +3,43 @@
 
 export interface LoggingMessageConfig {
   diagnosticsReturned: string;
-  bicepVersionInstalled: (version: string, path: string) => string;
+  bicepCacheHit: (version: string, path: string) => string;
+  bicepDownloading: (version: string) => string;
   requestFailedCorrelation: (correlationId: string | null) => string;
+  filesIgnoredForDelete: string;
+  startingOperation: (
+    type: string,
+    operation: string,
+    scope: string,
+    scopedId: string,
+    name: string,
+  ) => string;
+  usingTemplateFile: (templateFile: string) => string;
+  usingParametersFile: (parametersFile: string) => string;
 }
 
 const defaultLoggingMessages: LoggingMessageConfig = {
   diagnosticsReturned: "Diagnostics returned by the API",
-  bicepVersionInstalled: (version: string, path: string) =>
-    `Installed Bicep version ${version} to ${path}`,
+  bicepCacheHit: (version: string, path: string) =>
+    `Using cached Bicep version ${version} from ${path}`,
+  bicepDownloading: (version: string) =>
+    `Downloading Bicep version ${version}...`,
   requestFailedCorrelation: (correlationId: string | null) =>
     `Request failed. CorrelationId: ${correlationId}`,
+  filesIgnoredForDelete:
+    "Template and parameter files are not required for delete operations and will be ignored.",
+  startingOperation: (
+    type: string,
+    operation: string,
+    scope: string,
+    scopedId: string,
+    name: string,
+  ) =>
+    `Starting ${type} ${operation} at ${scope}${scopedId ? ` '${scopedId}'` : ""} scope${name ? ` with name '${name}'` : ""}`,
+  usingTemplateFile: (templateFile: string) =>
+    `Using template file: ${templateFile}`,
+  usingParametersFile: (parametersFile: string) =>
+    `Using parameters file: ${parametersFile}`,
 };
 
 let currentLoggingMessages: LoggingMessageConfig = {
