@@ -48,7 +48,7 @@
     "@azure/bicep-deploy-common": "*"
   },
   "devDependencies": {
-    "@types/node": "^24.1.0",
+    "@types/node": "^26.2.0",
     "@vitest/eslint-plugin": "^1.4.3",
     "esbuild": "^0.28.1",
     "eslint": "^9.39.1",
