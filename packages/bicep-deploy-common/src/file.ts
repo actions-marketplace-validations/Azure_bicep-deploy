@@ -1,9 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 import * as fs from "fs/promises";
+import fsSync from "fs";
 import * as path from "path";
 import * as os from "os";
-import { Bicep, CompileResponseDiagnostic } from "bicep-node";
+import { parse as parseJsonc } from "jsonc-parser";
+import { Bicep, CompileResponseDiagnostic } from "@azure/bicep-rpc-client";
 
 import { FileConfig } from "./config";
 import { Logger } from "./logging";
@@ -120,13 +122,27 @@ async function compileBicep(
   return { template: result.contents };
 }
 
+function isJsonLikeFile(filePath: string) {
+  const extension = path.extname(filePath).toLowerCase();
+  return extension === ".json" || extension === ".jsonc";
+}
+
 export async function getJsonParameters(config: FileConfig, logger: Logger) {
   const { parametersFile, parameters } = config;
 
   let contents;
   if (parametersFile) {
     logger.logInfo(loggingMessages.usingParametersFile(parametersFile));
-    contents = JSON.parse(await fs.readFile(parametersFile, "utf8"));
+    if (!fsSync.existsSync(parametersFile)) {
+      throw new Error(errorMessages.parametersFileNotFound(parametersFile));
+    }
+    contents = parseJsonc(
+      await fs.readFile(parametersFile, "utf8"),
+      undefined,
+      {
+        allowTrailingComma: true,
+      },
+    );
   } else {
     contents = { parameters: {} };
   }
@@ -162,10 +178,7 @@ export async function getTemplateAndParameters(
     );
   }
 
-  if (
-    parametersFile &&
-    path.extname(parametersFile).toLowerCase() !== ".json"
-  ) {
+  if (parametersFile && !isJsonLikeFile(parametersFile)) {
     throw new Error(errorMessages.unsupportedParametersFile(parametersFile));
   }
 
@@ -183,7 +196,7 @@ export async function getTemplateAndParameters(
     return parse({ template, parameters });
   }
 
-  if (templateFile && path.extname(templateFile).toLowerCase() !== ".json") {
+  if (templateFile && !isJsonLikeFile(templateFile)) {
     throw new Error(errorMessages.unsupportedTemplateFile(templateFile));
   }
 
@@ -203,8 +216,12 @@ export function parse(input: {
   templateSpecId?: string;
 }): ParsedFiles {
   const { parameters, template, templateSpecId } = input;
-  const parametersContents = parameters ? JSON.parse(parameters) : undefined;
-  const templateContents = template ? JSON.parse(template) : undefined;
+  const parametersContents = parameters
+    ? parseJsonc(parameters, undefined, { allowTrailingComma: true })
+    : undefined;
+  const templateContents = template
+    ? parseJsonc(template, undefined, { allowTrailingComma: true })
+    : undefined;
 
   return { parametersContents, templateContents, templateSpecId };
 }

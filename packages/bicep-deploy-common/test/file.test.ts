@@ -5,14 +5,18 @@ import {
   configureCompileParamsMock,
   configureBicepInstallMock,
 } from "./mocks/bicepNodeMocks";
-import { configureReadFile } from "./mocks/fsMocks";
+import { configureReadFile, configureExistsSync } from "./mocks/fsMocks";
 import { FileConfig } from "../src/config";
 import { TestLogger } from "./logging";
-import { getJsonParameters, getTemplateAndParameters } from "../src/file";
+import {
+  getJsonParameters,
+  getTemplateAndParameters,
+  parse,
+} from "../src/file";
 import { readTestFile, noopCache } from "./utils";
 
 describe("file parsing", () => {
-  it("reads and parses template and parameters files", async () => {
+  it("reads and parses JSON template and parameters files", async () => {
     const config: FileConfig = {
       templateFile: "/path/to/template.json",
       parametersFile: "/path/to/parameters.json",
@@ -89,6 +93,51 @@ describe("file parsing", () => {
     expect(infoLogs.some(log => log.includes("Using parameters file"))).toBe(
       false,
     );
+  });
+
+  it("accepts .jsonc template and parameters files", async () => {
+    const config: FileConfig = {
+      templateFile: "/path/to/template.jsonc",
+      parametersFile: "/path/to/parameters.jsonc",
+    };
+
+    configureReadFile(filePath => {
+      if (filePath === "/path/to/template.jsonc")
+        return readTestFile("files/basic/main.jsonc");
+      if (filePath === "/path/to/parameters.jsonc")
+        return readTestFile("files/basic/main.parameters.jsonc");
+      throw `Unexpected file path: ${filePath}`;
+    });
+
+    const logger = new TestLogger();
+
+    const {
+      templateContents: parsedTemplate,
+      parametersContents: parsedParameters,
+    } = await getTemplateAndParameters(config, logger, noopCache);
+
+    expect(parsedTemplate["$schema"]).toBe(
+      "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    );
+    expect(parsedTemplate["parameters"]["stringParam"]).toBeDefined();
+
+    expect(parsedParameters["$schema"]).toBe(
+      "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    );
+    expect(parsedParameters["parameters"]["stringParam"]).toBeDefined();
+  });
+
+  it("parses JSONC content containing comments", () => {
+    const template = readTestFile("files/basic/main.jsonc");
+    const parameters = readTestFile("files/basic/main.parameters.jsonc");
+    const parsed = parse({ template, parameters });
+
+    expect(parsed.templateContents["$schema"]).toBe(
+      "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    );
+    expect(
+      parsed.parametersContents["parameters"]["stringParam"],
+    ).toBeDefined();
   });
 
   it("compiles Bicepparam files", async () => {
@@ -296,6 +345,20 @@ describe("file parsing", () => {
     await expect(
       async () => await getTemplateAndParameters(config, logger, noopCache),
     ).rejects.toThrow("Template file is required");
+  });
+
+  it("throws when JSON parameters file does not exist", async () => {
+    const config: FileConfig = {
+      parametersFile: "/path/to/nonexistent.json",
+    };
+
+    configureExistsSync(false);
+
+    const logger = new TestLogger();
+
+    await expect(
+      async () => await getJsonParameters(config, logger),
+    ).rejects.toThrow("Parameters file not found: /path/to/nonexistent.json");
   });
 });
 

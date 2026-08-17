@@ -19,30 +19,23 @@ jobs:
     steps:
       - name: Checkout
         id: checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
         id: setup-node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
           cache: npm
 
-      - name: Install Dependencies Common
-        id: npm-install-common
-        working-directory: ./packages/bicep-deploy-common
-        run: npm ci
-
-      - name: Build bicep-deploy-common Package
-        id: build
-        working-directory: ./packages/bicep-deploy-common
-        run: |
-          rm -Rf dist
-          npm run build
-
       - name: Install Dependencies
         id: npm-install
         run: npm ci
+
+      - name: Build Workspace Packages
+        run: |
+          npm run clean:packages
+          npm run build:packages
 
       - name: Lint
         id: npm-lint
@@ -80,32 +73,25 @@ jobs:
     steps:
       - name: Checkout
         id: checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
         id: setup-node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
           cache: npm
-
-      - name: Install Dependencies Common
-        id: npm-install-common
-        working-directory: ./packages/bicep-deploy-common
-        run: npm ci
-
-      - name: Build bicep-deploy-common Package
-        id: build
-        working-directory: ./packages/bicep-deploy-common
-        run: |
-          rm -Rf dist
-          npm run build
 
       - name: Install Dependencies
         id: npm-ci
         run: npm ci
 
-      - uses: azure/login@v2
+      - name: Build Workspace Packages
+        run: |
+          npm run clean:packages
+          npm run build:packages
+
+      - uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -143,16 +129,16 @@ jobs:
     steps:
       - name: Checkout
         id: checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
         id: setup-node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
           cache: npm
 
-      - uses: azure/login@v2
+      - uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
